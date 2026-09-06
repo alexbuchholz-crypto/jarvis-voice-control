@@ -1,0 +1,9 @@
+vosk==0.3.45
+sounddevice==0.5.1
+keyboard==0.13.5
+mouse==0.7.1
+pystray==0.19.5
+pillow==11.0.0
+pyttsx3==2.98
+customtkinter==6.0.0
+requests==2.32.3
