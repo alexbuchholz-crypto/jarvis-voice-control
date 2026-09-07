@@ -6,7 +6,9 @@ import subprocess
 import keyboard
 import mouse
 
-ACTION_TYPES = ["hotkey", "launch", "media", "mouse_click", "mouse_scroll", "shell"]
+from . import app_finder
+
+ACTION_TYPES = ["hotkey", "launch", "media", "mouse_click", "mouse_scroll", "shell", "open_app"]
 
 MEDIA_KEYS = {
     "volume up",
@@ -57,6 +59,15 @@ def execute(action: dict):
         if not command:
             raise ValueError("shell action needs a 'command' string")
         subprocess.Popen(command, shell=True)
+
+    elif action_type == "open_app":
+        query = action.get("target")
+        if not query:
+            raise ValueError("open_app action needs a 'target' name")
+        shortcut = app_finder.find_app(query)
+        if not shortcut:
+            raise ValueError(f"Programm '{query}' wurde nicht im Startmenü gefunden")
+        os.startfile(shortcut)
 
     else:
         raise ValueError(f"unknown action type: {action_type!r}")

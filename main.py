@@ -7,8 +7,12 @@ from PIL import Image, ImageDraw
 import pystray
 
 from app import config as config_module
+from app import ollama_manager
 from app.gui import App
+from app import listener as listener_module
 from app.listener import VoiceListener
+from app.llm_matcher import LlmMatcher
+from app.overlay import WakeOverlay
 from app.tts import TextToSpeech
 
 ctk.set_appearance_mode("dark")
@@ -22,7 +26,14 @@ class Controller:
         self.tts = TextToSpeech()
         self.tts.start()
 
+        self._ollama_process = None
+        threading.Thread(target=self._start_ollama, daemon=True).start()
+
+        self._vosk_model = None
+        threading.Thread(target=self._preload_vosk_model, daemon=True).start()
+
         self.root = ctk.CTk()
+        self.wake_overlay = WakeOverlay(self.root)
         self.app = App(
             self.root,
             self.config,
@@ -32,6 +43,16 @@ class Controller:
             on_resume=self.resume_listener,
             on_apply_settings=self.apply_settings,
         )
+
+    def _start_ollama(self):
+        self._ollama_process = ollama_manager.start_background()
+        if ollama_manager.is_running():
+            LlmMatcher().warmup()
+
+    def _preload_vosk_model(self):
+        model_path = self.config.get("language_model_path")
+        if os.path.isdir(model_path):
+            self._vosk_model = listener_module.load_model(self.config)
 
     def apply_settings(self, config):
         self.config = config
@@ -43,7 +64,14 @@ class Controller:
             return
         if self.listener and self.listener.is_alive():
             return
-        self.listener = VoiceListener(self.config, tts=self.tts, on_status=self.app.push_status)
+        if self._vosk_model is None:
+            self.app.push_status("Sprachmodell wird noch geladen...")
+        self.listener = VoiceListener(
+            self.config, tts=self.tts, on_status=self.app.push_status,
+            on_wake_word=self.wake_overlay.show,
+            on_command_done=self.wake_overlay.hide,
+            model=self._vosk_model,
+        )
         self.listener.start()
 
     def pause_listener(self):
@@ -75,6 +103,7 @@ class Controller:
     def quit(self, icon=None, item=None):
         self.stop_listener()
         self.tts.stop()
+        ollama_manager.stop(self._ollama_process)
         if icon:
             icon.stop()
         self.root.after(0, self.root.destroy)

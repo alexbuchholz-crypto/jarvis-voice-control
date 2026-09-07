@@ -4,6 +4,13 @@ keyboard==0.13.5
 mouse==0.7.1
 pystray==0.19.5
 pillow==11.0.0
-pyttsx3==2.98
 customtkinter==6.0.0
 requests==2.32.3
+
+# Text-to-speech (Coqui XTTS-v2, GPU-accelerated voice cloning).
+# Install in this order — see README "Sprachausgabe (TTS)" for why:
+# 1) torch==2.6.0 and torchaudio==2.6.0 from https://download.pytorch.org/whl/cu124
+# 2) coqui-tts
+# 3) transformers==4.57.0 (reinstall after coqui-tts, it pulls an incompatible version)
+# 4) torchcodec
+coqui-tts

@@ -7,7 +7,7 @@ CONFIG_PATH = os.path.join(APPDATA_DIR, "config.json")
 DEFAULT_CONFIG = {
     "wake_word": "jarvis",
     "mic_device": None,
-    "language_model_path": "models/vosk-model-small-de-0.15",
+    "language_model_path": "models/vosk-model-de-0.21",
     "match_threshold": 0.6,
     "speak_responses": True,
     "commands": [
@@ -46,6 +46,61 @@ DEFAULT_CONFIG = {
             "description": "Einen Screenshot/Bildschirmfoto aufnehmen",
             "response": "Screenshot gemacht",
             "action": {"type": "hotkey", "keys": ["windows", "shift", "s"]},
+        },
+        {
+            "phrase": "video pausieren",
+            "description": "Video im Browser (z.B. YouTube) pausieren oder fortsetzen",
+            "response": "",
+            "action": {"type": "hotkey", "keys": ["space"]},
+        },
+        {
+            "phrase": "spul vor",
+            "description": "Video vorspulen (z.B. YouTube)",
+            "response": "Vorgespult",
+            "action": {"type": "hotkey", "keys": ["right"]},
+        },
+        {
+            "phrase": "spul zurueck",
+            "description": "Video zurückspulen (z.B. YouTube)",
+            "response": "Zurückgespult",
+            "action": {"type": "hotkey", "keys": ["left"]},
+        },
+        {
+            "phrase": "vollbild",
+            "description": "Video/Player in den Vollbildmodus schalten",
+            "response": "Vollbild",
+            "action": {"type": "hotkey", "keys": ["f"]},
+        },
+        {
+            "phrase": "untertitel umschalten",
+            "description": "Untertitel im YouTube-Player ein- oder ausschalten",
+            "response": "Untertitel umgeschaltet",
+            "action": {"type": "hotkey", "keys": ["c"]},
+        },
+        {
+            "phrase": "naechstes video",
+            "description": "Nächstes Video in der YouTube-Playlist abspielen",
+            "response": "Nächstes Video",
+            "action": {"type": "hotkey", "keys": ["shift", "n"]},
+        },
+        {
+            "phrase": "vorheriger titel",
+            "description": "Vorherigen Musiktitel abspielen (Spotify etc.)",
+            "response": "Vorheriger Titel",
+            "action": {"type": "media", "key": "previous track"},
+        },
+        {
+            "phrase": "weiterspielen",
+            "description": (
+                "Musik/Wiedergabe starten oder fortsetzen (z.B. Spotify). Dieser Befehl ist "
+                "IMMER die richtige Wahl, wenn 'Musik' zusammen mit 'an', 'weiter', 'fortsetzen', "
+                "'starten' oder 'spiel(en)' vorkommt — genaue Beispiele, die alle hierher gehören: "
+                "'musik an', 'mach musik an', 'musik weiter', 'musik fortsetzen', 'spiel musik', "
+                "'spiel die musik', 'spiel weiter'. Das ist reine Wiedergabesteuerung, KEIN "
+                "App-Öffnen."
+            ),
+            "response": "Wird fortgesetzt",
+            "action": {"type": "media", "key": "play/pause media"},
         },
     ],
 }

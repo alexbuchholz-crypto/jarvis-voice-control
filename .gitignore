@@ -1,6 +1,7 @@
 __pycache__/
 *.pyc
 models/
+tts_models/
 *.log
 build/
 *.spec

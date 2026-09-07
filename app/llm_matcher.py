@@ -18,10 +18,26 @@ MODEL_NAME = "qwen2.5:7b-instruct"
 SYSTEM_PROMPT = """Du bist die Intent-Erkennung einer lokalen Sprachsteuerung für einen Windows-PC.
 Der Nutzer spricht einen Satz. Du bekommst eine nummerierte Liste verfügbarer Befehle.
 Wähle den Befehl, der am besten zur Absicht des Nutzers passt — auch wenn die Formulierung
-ganz anders ist als der Befehlstext. Wenn kein Befehl wirklich passt, gib null zurück.
+ganz anders ist als der Befehlstext.
+
+Prüfe IMMER zuerst, ob einer der Befehle in der Liste (auch sinngemäß, auch bei
+ganz anderer Formulierung) passt — das hat Vorrang. Nutze "open_app" NUR, wenn
+der Nutzer erkennbar ein bestimmtes, konkretes Programm/App öffnen/starten
+möchte (z.B. "oeffne epic games", "starte discord") UND kein Befehl aus der
+Liste inhaltlich dazu passt. Allgemeine Formulierungen wie "spiel musik" oder
+"mach musik an" sind Wiedergabesteuerung, KEIN App-Öffnen — dafür gilt der
+passende Befehl aus der Liste, falls vorhanden.
+
+Wenn der Nutzer nach der aktuellen Uhrzeit fragt (z.B. "wie spaet ist es",
+"wieviel uhr ist es"), setze "system_query" auf "time". Wenn er nach dem
+heutigen Datum oder Wochentag fragt (z.B. "welcher tag ist heute",
+"welches datum haben wir", "welcher wochentag ist heute", "der wievielte
+ist heute"), setze "system_query" auf "date".
+
+Wenn nichts davon passt, gib alle drei Felder als null zurück.
 
 Antworte AUSSCHLIESSLICH mit einem JSON-Objekt, ohne weitere Erklärung, in genau diesem Format:
-{"command_index": <Zahl oder null>, "confidence": "high"|"medium"|"low"}
+{"command_index": <Zahl oder null>, "open_app": <Programmname oder null>, "system_query": "time"|"date"|null, "confidence": "high"|"medium"|"low"}
 """
 
 
@@ -62,6 +78,25 @@ class LlmMatcher:
         except requests.RequestException:
             return False
 
+    def warmup(self):
+        """Fires a minimal real request so the model gets loaded into GPU
+        memory ahead of time, instead of on the user's first real command
+        (which would otherwise take up to a minute)."""
+        try:
+            requests.post(
+                OLLAMA_URL,
+                json={
+                    "model": self.model_name,
+                    "messages": [{"role": "user", "content": "hallo"}],
+                    "stream": False,
+                    "options": {"temperature": 0.0},
+                    "keep_alive": "30m",
+                },
+                timeout=120,
+            )
+        except requests.RequestException:
+            pass
+
     def best_match(self, utterance: str, commands: list, learned_examples: list):
         """Returns (command_dict_or_None, confidence_str)."""
         if not commands or not utterance:
@@ -85,8 +120,28 @@ class LlmMatcher:
         if not parsed:
             return None, "low"
 
-        idx = parsed.get("command_index")
         confidence = parsed.get("confidence", "low")
-        if idx is None or not isinstance(idx, int) or not (0 <= idx < len(commands)):
-            return None, confidence
-        return commands[idx], confidence
+
+        idx = parsed.get("command_index")
+        if isinstance(idx, int) and 0 <= idx < len(commands):
+            return commands[idx], confidence
+
+        app_name = parsed.get("open_app")
+        if isinstance(app_name, str) and app_name.strip():
+            synthetic_command = {
+                "phrase": app_name,
+                "response": f"{app_name} wird geöffnet",
+                "action": {"type": "open_app", "target": app_name.strip()},
+            }
+            return synthetic_command, confidence
+
+        system_query = parsed.get("system_query")
+        if system_query in ("time", "date"):
+            synthetic_command = {
+                "phrase": f"system:{system_query}",
+                "response": None,
+                "action": {"type": "system_info", "query": system_query},
+            }
+            return synthetic_command, confidence
+
+        return None, confidence
